@@ -52,7 +52,7 @@ async function deleteRoom(room) {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://realtime-chat-frontend-ba.herokuapp.com/",
+    origin: "https://realtime-chat-frontend-ba.herokuapp.com",
     methods: ["GET", "POST"],
     credentials: true
   },
