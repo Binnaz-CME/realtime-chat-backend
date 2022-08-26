@@ -23,14 +23,16 @@ async function getRoom(id) {
 }
 
 async function addRoom(room) {
-  const id = await knex("rooms").insert(room);
-  return id;
+  const [res] = await knex("rooms").insert(room).returning('id');
+  return res.id;
 }
 
 async function addMessage({ user, room, message }) {
   if (message) {
-    const id = await knex("messages").insert({ user, room, message });
-    return id;
+    const [res] = await knex("messages")
+      .insert({ user, room, message })
+      .returning("id");
+    return res.id;
   } else {
     return null;
   }
@@ -52,9 +54,12 @@ async function deleteRoom(room) {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://realtime-chat-frontend-ba.herokuapp.com",
+    origin: [
+      "https://realtime-chat-frontend-ba.herokuapp.com",
+      "http://localhost:3000",
+    ],
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   },
 });
 
@@ -65,14 +70,12 @@ io.on("connection", async (socket) => {
   socket.emit("rooms", createdRooms);
 
   socket.use(([event, ...args], next) => {
-
     if (event === "message") {
-      
       const messageLog = JSON.stringify({
         timestamp: Date(),
         user: socket.username,
         room: socket.currentRoom,
-        message : args[0].message
+        message: args[0].message,
       });
 
       let stream = fs.createWriteStream("./data/message_log.txt", {
@@ -125,7 +128,6 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("message", async (message) => {
-
     const createMessage = {
       user: socket.username,
       room: socket.currentRoom,
@@ -133,13 +135,13 @@ io.on("connection", async (socket) => {
     };
 
     const id = await addMessage(createMessage);
+    console.log("id", id);
     const newMessage = await getMessage(id);
 
     io.to(socket.currentRoom).emit("message", newMessage);
   });
 
   socket.on("delete_room", async (room) => {
-
     await deleteRoom(room);
     const newRooms = await getRooms();
 
